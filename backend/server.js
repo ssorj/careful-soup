@@ -30,31 +30,38 @@ const password = process.env.MESSAGING_SERVICE_PASSWORD || "example";
 const id = Math.floor(Math.random() * (10000 - 1000)) + 1000;
 const container = rhea.create_container({id: "backend-" + id});
 
-var requests_processed = 0;
+let requests_processed = 0;
 
 function process_request(request) {
     return request.body.toUpperCase();
 }
 
-container.on("connection_open", function (event) {
+container.on("connection_open", (event) => {
+    console.log("BACKEND: Connection opened");
+
     event.connection.open_receiver("careful-soup/requests");
 });
 
-container.on("message", function (event) {
-    var request = event.message;
+container.on("receiver_open", (event) => {
+    console.log("BACKEND: Receiver opened");
+});
+
+container.on("message", (event) => {
+    let request = event.message;
+    let response_body;
 
     console.log("BACKEND: Received request '%s'", request.body);
 
     try {
-        var response_body = process_request(request);
+        response_body = process_request(request);
     } catch (e) {
         console.error("BACKEND: Failed processing message: %s", e);
         return;
     }
 
-    console.log("BACKEND: Sending response '%s'", response_body);
+    console.log("BACKEND: Sending response '%s' to '%s'", response_body, request.reply_to);
 
-    var response = {
+    let response = {
         to: request.reply_to,
         correlation_id: request.id,
         body: response_body
@@ -67,9 +74,9 @@ container.on("message", function (event) {
 
 container.connect({
     host: amqp_host,
-    port: amqp_port
-    // username: user,
-    // password: password
+    port: amqp_port,
+    username: user,
+    password: password
 });
 
-console.log("Connected to AMQP messaging service at %s:%s", amqp_host, amqp_port);
+console.log("BACKEND: Connecting to AMQP messaging service at %s:%s", amqp_host, amqp_port);

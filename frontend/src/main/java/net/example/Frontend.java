@@ -25,11 +25,12 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.jms.CompletionListener;
 import javax.jms.ConnectionFactory;
+import javax.jms.JMSConsumer;
 import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.JMSProducer;
 import javax.jms.Message;
-import javax.jms.Topic;
+import javax.jms.Queue;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.ws.rs.Consumes;
@@ -96,10 +97,12 @@ public class Frontend {
     @Path("/send-request")
     @Consumes("text/plain")
     @Produces("text/plain")
-    public String sendRequest(String string) {
+    public String sendRequest(String requestText) {
         synchronized (jmsContext) {
-            Topic topic = jmsContext.createTopic("careful-soup/requests");
+            Queue requestQueue = jmsContext.createQueue("careful-soup/requests");
+            Queue responseQueue = jmsContext.createTemporaryQueue();
             JMSProducer producer = jmsContext.createProducer();
+            JMSConsumer consumer = jmsContext.createConsumer(responseQueue);
 
             producer.setAsync(new CompletionListener() {
                     @Override
@@ -117,12 +120,29 @@ public class Frontend {
                     }
                 });
 
-            producer.send(topic, string);
+            Message request = jmsContext.createTextMessage(requestText);
+            String responseText = null;
+
+            try {
+                request.setJMSReplyTo(responseQueue);
+            } catch (JMSException e) {
+                log.error("Message access error", e);
+            }
+
+            producer.send(requestQueue, request);
+
+            log.info("FRONTEND: Sent request '{}'", requestText);
+
+            try {
+                responseText = consumer.receive().getBody(String.class);
+            } catch (JMSException e) {
+                log.error("Message receive error", e);
+            }
+
+            log.info("FRONTEND: Received response '{}'", responseText);
+
+            return "OK -> \"" + responseText + "\"\n";
         }
-
-        log.info("FRONTEND: Sent message '{}'", string);
-
-        return "OK\n";
     }
 
     @GET
