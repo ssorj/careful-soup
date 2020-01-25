@@ -1,0 +1,13 @@
+{
+    "name": "careful-soup-backend",
+    "version": "1.0.0",
+    "description": "A sample Node.js app that processes requests",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "rhea": "^1.0.17"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ssorj/careful-soup.git"
+    }
+}

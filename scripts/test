@@ -1,0 +1,37 @@
+#!/usr/bin/python3
+
+from plano import *
+
+#ENV["MESSAGING_SERVICE_PORT"] = "5672"
+
+enable_logging(level="warn")
+
+frontend = None
+backend = None
+
+try:
+    with working_env(HTTP_HOST="localhost", HTTP_PORT="8081"):
+        frontend = start_process("java -jar frontend/target/careful-soup-frontend-1.0.0-SNAPSHOT-jar-with-dependencies.jar")
+
+    with working_env(HTTP_HOST="localhost", HTTP_PORT="8082"):
+        with working_dir("backend"):
+            backend = start_process("npm start")
+
+    while True:
+        try:
+            http_get("http://localhost:8081/api/ready")
+            # XXX http_get("http://localhost:8082/api/ready")
+
+            break
+        except CalledProcessError:
+            sleep(0.2)
+
+    # call("curl -X POST -d \"hello 1\" -H \"Content-type: text/plain\" http://localhost:8081/api/send")
+    # call("curl -X POST -d \"hello 2\" -H \"Content-type: text/plain\" http://localhost:8081/api/send")
+    # call("curl -X POST -d \"hello 3\" -H \"Content-type: text/plain\" http://localhost:8081/api/send")
+    # call("curl -X POST http://localhost:8082/api/receive")
+    # call("curl -X POST http://localhost:8082/api/receive")
+    # call("curl -X POST http://localhost:8082/api/receive")
+finally:
+    terminate_process(frontend)
+    terminate_process(backend)
