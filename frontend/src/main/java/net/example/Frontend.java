@@ -43,6 +43,12 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.jaegertracing.Configuration;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
+
 @Singleton
 @Path("/api")
 public class Frontend {
@@ -51,6 +57,11 @@ public class Frontend {
 
     public static void main(String[] args) {
         try {
+            // Register the global tracer
+
+            Tracer tracer = Configuration.fromEnv("frontend").getTracer();
+            GlobalTracer.registerIfAbsent(tracer);
+
             // AMQP
 
             String amqpHost = System.getenv("MESSAGING_SERVICE_HOST");
@@ -60,10 +71,10 @@ public class Frontend {
 
             if (amqpHost == null) amqpHost = "localhost";
             if (amqpPort == null) amqpPort = "5672";
-            if (user == null) user = "example";
+            if (user == null)     user = "example";
             if (password == null) password = "example";
 
-            String url = String.format("failover:(amqp://%s:%s)", amqpHost, amqpPort);
+            String url = String.format("failover:(amqp://%s:%s)?jms.tracing=opentracing", amqpHost, amqpPort);
 
             Hashtable<Object, Object> env = new Hashtable<Object, Object>();
             env.put("connectionfactory.factory1", url);
@@ -98,50 +109,56 @@ public class Frontend {
     @Consumes("text/plain")
     @Produces("text/plain")
     public String sendRequest(String requestText) {
-        synchronized (jmsContext) {
-            Queue requestQueue = jmsContext.createQueue("careful-soup/requests");
-            Queue responseQueue = jmsContext.createTemporaryQueue();
-            JMSProducer producer = jmsContext.createProducer();
-            JMSConsumer consumer = jmsContext.createConsumer(responseQueue);
+        Span span = GlobalTracer.get().buildSpan("sendRequest").start();
 
-            producer.setAsync(new CompletionListener() {
-                    @Override
-                    public void onCompletion(Message message) {
-                        try {
-                            log.info("FRONTEND: Receiver acknowledged '{}'", message.getBody(String.class));
-                        } catch (JMSException e) {
-                            log.error("Message access error", e);
+        try (Scope scope = GlobalTracer.get().scopeManager().activate(span)) {
+            synchronized (jmsContext) {
+                Queue requestQueue = jmsContext.createQueue("careful-soup/requests");
+                Queue responseQueue = jmsContext.createTemporaryQueue();
+                JMSProducer producer = jmsContext.createProducer();
+                JMSConsumer consumer = jmsContext.createConsumer(responseQueue);
+
+                producer.setAsync(new CompletionListener() {
+                        @Override
+                        public void onCompletion(Message message) {
+                            try {
+                                log.info("FRONTEND: Receiver acknowledged '{}'", message.getBody(String.class));
+                            } catch (JMSException e) {
+                                log.error("Message access error", e);
+                            }
                         }
-                    }
 
-                    @Override
-                    public void onException(Message message, Exception e) {
-                        log.info("FRONTEND: Send failed: {}", e.toString());
-                    }
-                });
+                        @Override
+                        public void onException(Message message, Exception e) {
+                            log.info("FRONTEND: Send failed: {}", e.toString());
+                        }
+                    });
 
-            Message request = jmsContext.createTextMessage(requestText);
-            String responseText = null;
+                Message request = jmsContext.createTextMessage(requestText);
+                String responseText = null;
 
-            try {
-                request.setJMSReplyTo(responseQueue);
-            } catch (JMSException e) {
-                log.error("Message access error", e);
+                try {
+                    request.setJMSReplyTo(responseQueue);
+                } catch (JMSException e) {
+                    log.error("Message access error", e);
+                }
+
+                producer.send(requestQueue, request);
+
+                log.info("FRONTEND: Sent request '{}'", requestText);
+
+                try {
+                    responseText = consumer.receive().getBody(String.class);
+                } catch (JMSException e) {
+                    log.error("Message receive error", e);
+                }
+
+                log.info("FRONTEND: Received response '{}'", responseText);
+
+                return "OK -> \"" + responseText + "\"\n";
             }
-
-            producer.send(requestQueue, request);
-
-            log.info("FRONTEND: Sent request '{}'", requestText);
-
-            try {
-                responseText = consumer.receive().getBody(String.class);
-            } catch (JMSException e) {
-                log.error("Message receive error", e);
-            }
-
-            log.info("FRONTEND: Received response '{}'", responseText);
-
-            return "OK -> \"" + responseText + "\"\n";
+        } finally {
+            span.finish();
         }
     }
 

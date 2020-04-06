@@ -24,9 +24,10 @@ try:
         except CalledProcessError:
             sleep(0.2)
 
-    call("curl -X POST -d \"hello 1\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
-    call("curl -X POST -d \"hello 2\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
-    call("curl -X POST -d \"hello 3\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
+    with working_env(JAEGER_SAMPLER_TYPE="const", JAEGER_SAMPLER_PARAM="1"):
+        call("curl -fX POST -d \"hello 1\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
+        call("curl -fX POST -d \"hello 2\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
+        call("curl -fX POST -d \"hello 3\" -H \"Content-type: text/plain\" http://localhost:8081/api/send-request")
 finally:
     terminate_process(frontend)
     terminate_process(backend)
