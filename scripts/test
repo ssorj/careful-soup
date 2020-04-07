@@ -5,17 +5,16 @@ from plano import *
 # Set this to change the default broker port
 # ENV["MESSAGING_SERVICE_PORT"] = "5672"
 
-enable_logging(level="warn")
+# enable_logging(level="warn")
 
 frontend = None
 backend = None
 
 try:
     with working_env(HTTP_HOST="localhost", HTTP_PORT="8081"):
-        frontend = start_process("java -jar frontend/target/careful-soup-frontend-1.0.0-SNAPSHOT-jar-with-dependencies.jar")
+        frontend = start_process("java -jar frontends/java/target/careful-soup-frontend-1.0.0-SNAPSHOT-jar-with-dependencies.jar")
 
-    with working_dir("backend"):
-        backend = start_process("npm start")
+    backend = start_process("python3 backends/python/app.py")
 
     while True:
         try:

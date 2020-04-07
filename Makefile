@@ -8,7 +8,7 @@ build:
 	cd backend && npm install
 
 .PHONY: test
-test: build
+test:
 	scripts/test
 
 .PHONY: clean
