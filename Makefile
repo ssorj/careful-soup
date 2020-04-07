@@ -4,8 +4,8 @@ default:
 
 .PHONY: build
 build:
-	cd frontend && mvn package
-	cd backend && npm install
+	cd frontends/java && mvn package
+	cd backends/javascript && npm install
 
 .PHONY: test
 test:
@@ -13,8 +13,8 @@ test:
 
 .PHONY: clean
 clean:
-	cd frontend && mvn clean
-	cd backend && make clean
+	cd frontends/java && mvn clean
+	cd backends/javascript && make clean
 	rm -f README.html
 	rm -rf scripts/__pycache__
 
