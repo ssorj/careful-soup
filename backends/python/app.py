@@ -19,11 +19,11 @@
 
 import os
 import random
-import sys
 
 from proton import Message
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
+
 from proton.tracing import init_tracer
 
 tracer = init_tracer("backend")

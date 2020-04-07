@@ -109,9 +109,10 @@ public class Frontend {
     @Consumes("text/plain")
     @Produces("text/plain")
     public String sendRequest(String requestText) {
-        Span span = GlobalTracer.get().buildSpan("sendRequest").start();
+        Tracer tracer = GlobalTracer.get();
+        Span span = tracer.buildSpan("sendRequest").start();
 
-        try (Scope scope = GlobalTracer.get().scopeManager().activate(span)) {
+        try (Scope scope = tracer.activateSpan(span)) {
             synchronized (jmsContext) {
                 Queue requestQueue = jmsContext.createQueue("careful-soup/requests");
                 Queue responseQueue = jmsContext.createTemporaryQueue();
