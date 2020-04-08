@@ -17,7 +17,11 @@ The file `scripts/test` has the details of exercising the application.
 
 3. Start the frontend servce.
 
-        HTTP_HOST=localhost HTTP_PORT=8081 java -jar frontends/java/target/careful-soup-frontend-1.0.0-SNAPSHOT-jar-with-dependencies.jar &
+        export JAEGER_SAMPLER_TYPE=const
+        export JAEGER_SAMPLER_PARAM=1
+        export HTTP_HOST=localhost
+        export HTTP_PORT=8081
+        java -jar frontends/java/target/careful-soup-frontend-1.0.0-SNAPSHOT-jar-with-dependencies.jar &
 
 4. Start the backend service.
 
