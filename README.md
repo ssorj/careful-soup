@@ -1,5 +1,16 @@
 # Careful soup
 
+## Dependencies
+
+ - sudo dnf install python3-opentracing
+ - pip3 install --user jaeger_client
+
+## Running a broker
+
+    podman run --rm --name broker -p 5672:5672 -e AMQ_USER=example -e AMQ_PASSWORD=example quay.io/artemiscloud/activemq-artemis-broker
+
+## Running the test script
+
 Requires a broker listening on localhost:5672 with user "example", password "example".
 
     $ cd careful-soup/
